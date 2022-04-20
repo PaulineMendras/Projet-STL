@@ -12,6 +12,7 @@ require(tseries)
 require(fUnitRoots)
 require(urca)
 require(vars)
+require(forecast)
 require(stargazer)
 
 ################################
@@ -32,7 +33,7 @@ data <- read.csv(datafile,sep=";")
 data <- data[-c(1:3),-3]
 data<- data[seq(dim(data)[1],1),]
 colnames(data)=c("Date","Indice")
-data$Indice <- as.numeric(data$Indice)
+data$Indice <- type.convert(data$Indice, dec = ".")
 
 ##############
 # Question 2 #
@@ -213,7 +214,7 @@ armamodelchoice <- function(pmax,qmax){
   }))
 }
 
-pmax <- 4; qmax <- 1
+pmax <- 4; qmax <- 2
 armamodels <- armamodelchoice(pmax,qmax) #estime tous les ARIMA
 selec <- armamodels[armamodels[,"ok"]==1&!is.na(armamodels[,"ok"]),]
 #modèles bien ajustés et valides
@@ -229,8 +230,8 @@ selec
 #2 modèles sont bien spécifiés: ARIMA(12,0,4) et ARIMA(4,0,12) pour la série diff_ipi
 
 #Sélection des modèles via les  critères d'information
-arima1204 <- arima(diff_ipi,c(12,0,4))
-arima4012 <- arima(diff_ipi,c(4,0,12))
+arima1204 <- arima(diff_ipi,order=c(12,0,4))
+arima4012 <- arima(diff_ipi,order=c(4,0,12))
 AIC(arima1204);BIC(arima1204)
 AIC(arima4012);BIC(arima4012)
 #Le modèle ARIMA(4,0,12) minimise les 2 critères d'infomation: nous retenons ce modèle
@@ -239,3 +240,9 @@ AIC(arima4012);BIC(arima4012)
 stargazer(arima4012, type = 'text')
 summary(arima4012$residuals)
 sigmaEpsilon <- sqrt(var(arima4012$residuals))
+
+plot(diff_ipi,col="black",lwd=1)
+lines(fitted(arima4012),col="red", type='o',lwd=2)
+
+
+auto.arima(diff_ipi,seasonal=FALSE,d=0)
