@@ -106,8 +106,8 @@ adf
 
 #1ère méthode pour rendre la série stationnaire: on garde la série corrigée de sa tendance
 ipi_r <- lt$residuals 
-plot.ts(r)
-acf(r)
+plot.ts(ipi_r)
+acf(ipi_r)
 #La série ne semble pas stationnaire, nous ne sélectionnons pas cette méthode
 
 #2ème méthode: différenciation première
@@ -159,11 +159,10 @@ plot.ts(ipi, xlab="Années", ylab="IPI", main="Série avant transformation");
 diff_ipi <- diff_ipi - mean(diff_ipi) #on centre la série différenciée
 
 par(mfrow=c(2,1))
-acf(diff_ipi,60) #on considère qmax=1
+acf(diff_ipi,60) #on considère qmax=20 (dire qu'on a testé qmax= 1 puis 20 car dernier ordre significatif)
 pacf(diff_ipi,60) #on considère pmax=4
-#On augmentera si les modèles retenus sont autocorrélés
 
-#Les modèles possibles sont donc tous les modèles ARIMA(p,1,q) tels que p<=4 et q<=1
+#Les modèles possibles sont donc tous les modèles ARIMA(p,1,q) tels que p<=4 et q<=20
 # Pour choisir le meilleur modèle, il faut vérifier la validité et l'ajustement
 #des modèles possibles
 #Pour tester la validité du modèle, nous utilisons la fonction Qtest définie précédemment
@@ -213,29 +212,24 @@ armamodelchoice <- function(pmax,qmax){
   }))
 }
 
-pmax <- 4; qmax <- 1
+pmax <- 4; qmax <- 20
 armamodels <- armamodelchoice(pmax,qmax) #estime tous les ARIMA
 selec <- armamodels[armamodels[,"ok"]==1&!is.na(armamodels[,"ok"]),]
 #modèles bien ajustés et valides
 selec
-#Aucun modèle n'est ajusté et validé pour pmax=4 et qmax=1
-#En reconsidérant l'ACF et la PACF, on prend le second ordre tel que p(h)<0 et r(h)<0, ie pmax=9 et qmax=8
-
-pmax <- 13; qmax <- 13
-armamodels <- armamodelchoice(pmax,qmax) #estime tous les ARIMA
-selec <- armamodels[armamodels[,"ok"]==1&!is.na(armamodels[,"ok"]),]
-#modèles bien ajustés et valides
-selec
-#2 modèles sont bien spécifiés: ARIMA(12,0,4) et ARIMA(4,0,12) pour la série diff_ipi
+#2 modèles sont bien spécifiés: ARIMA(3,0,15) et ARIMA(4,0,12) pour la série diff_ipi
 
 #Sélection des modèles via les  critères d'information
-arima1204 <- arima(diff_ipi,c(12,0,4))
+arima3015 <- arima(diff_ipi,c(3,0,15))
 arima4012 <- arima(diff_ipi,c(4,0,12))
-AIC(arima1204);BIC(arima1204)
-AIC(arima4012);BIC(arima4012)
-#Le modèle ARIMA(4,0,12) minimise les 2 critères d'infomation: nous retenons ce modèle
 
-#Estimation du modèle ARIMA(4,0,12) pour la série diff_ipi
-stargazer(arima4012, type = 'text')
-summary(arima4012$residuals)
+AIC(arima3015);BIC(arima3015)
+AIC(arima4012);BIC(arima4012)
+#Le modèle ARIMA(3,0,15) minimise l'AIC et le modèle ARIMA(4,0,12) minimise le BIC
+#Nous choisissons de retenir le BIC et donc le modèle ARIMA(4,0,12)
+
+#Estimation du modèle ARIMA(4,1,12) pour la série ipi
+arima4112 <- arima(ipi,c(4,1,12))
+stargazer(arima4112, type = 'text')
+summary(arima4112$residuals)
 sigmaEpsilon <- sqrt(var(arima4012$residuals))
