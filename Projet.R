@@ -39,7 +39,7 @@ data$Indice <- as.numeric(data$Indice)
 ##############
 
 #Représentation graphique de la série
-ipi <- ts(data$Indice,start=c(1990,1), end=c(2022, 2), frequency = 12)
+ipi <- ts(data$Indice,start=c(1990,1), end=c(2020, 2), frequency = 12)
 plot.ts(ipi, xlab="Années", ylab="IPI", main="Fabrication de savons, produits d'entretien et de parfums")
 #La série ne parait pas stationnaire
 #La série semble présenter une tendance ascendante
@@ -96,7 +96,7 @@ adfTest_valid <- function(series,kmax,type){ #tests ADF jusqu'à des résidus no
 }
 
 adf <- adfTest_valid(ipi,24,"ct")
-#Il a fallu considérer 7 retards au test ADF pour supprimer l'autocorrélation des résidus
+#Il a fallu considérer 1 retard au test ADF pour supprimer l'autocorrélation des résidus
 
 #Affichage des résultats du test valide maintenant
 adf
@@ -125,7 +125,7 @@ summary(lt)
 #Effectuons donc le test ADF dans le cas sans tendance ni constante, 
 #en vérifiant l'absence d'autocorrélation des résidus, comme précédemment
 adf_diff <- adfTest_valid(diff_ipi,24, type="nc")
-#Il a fallu considérer 6 retards au test ADF pour supprimer l'autocorrélation des résidus
+#Il a fallu considérer 2 retards au test ADF pour supprimer l'autocorrélation des résidus
 #On rejette l'hypothèse nulle de racine unitaire au seuil de 1%.
 #Affichage des résultats du test valide maintenant
 adf_diff
@@ -158,8 +158,8 @@ plot.ts(ipi, xlab="Années", ylab="IPI", main="Série avant transformation");
 diff_ipi <- diff_ipi - mean(diff_ipi) #on centre la série différenciée
 
 par(mfrow=c(2,1))
-acf(diff_ipi,60) #on considère qmax=1
-pacf(diff_ipi,60) #on considère pmax=7
+acf(diff_ipi,60) #on considère qmax=3
+pacf(diff_ipi,60) #on considère pmax=3
 
 #Les modèles possibles sont donc tous les modèles ARIMA(p,1,q) tels que p<=7 et q<=1
 # Pour choisir le meilleur modèle, il faut vérifier la validité et l'ajustement
@@ -211,27 +211,35 @@ armamodelchoice <- function(pmax,qmax){
   }))
 }
 
-pmax <- 7; qmax <- 1
+pmax <- 3; qmax <- 3
 armamodels <- armamodelchoice(pmax,qmax) #estime tous les ARIMA
 selec <- armamodels[armamodels[,"ok"]==1&!is.na(armamodels[,"ok"]),]
 #modèles bien ajustés et valides
 selec
-#Un seul modèle est bien spécifié: ARIMA(7,0,0) pour la série diff_ipi
+#3 modèles sont bien spécifiés: ARIMA(3,0,0), ARIMA(2,0,1) et ARIMA(0,0,3) pour la série diff_ipi
 
-arima700 <- arima(diff_ipi,c(7,0,0))
-arima710 <- arima(ipi,c(7,1,0))
+arima300 <- arima(diff_ipi,c(3,0,0))
+arima201 <- arima(diff_ipi,c(2,0,1))
+arima003 <- arima(diff_ipi, c(0,0,3))
 
-#Sélection des modèles via les  critères d'information: on aurait pu utiliser AIC et BIC
+#Sélection des modèles via les  critères d'information AIC et BIC
+AIC(arima300); BIC(arima300)
+AIC(arima201); BIC(arima201)
+AIC(arima003); BIC(arima003)
+#Le modèle ARIMA(2,0,1) minimise les 2 critères d'information
+#Nous retenons ce modèle pour la série diff_ipi
 
-#Estimation du modèle ARIMA(7,1,0) pour la série ipi
-stargazer(arima710, type = 'text')
-summary(arima710$residuals)
-sigmaEpsilon <- sqrt(var(arima710$residuals))
+arima211 <- arima(ipi,c(2,1,1))
 
-#Estimation du modèle ARIMA(7,0,0) pour la série diff_ipi
-stargazer(arima700, type = 'text')
-summary(arima700$residuals)
-sigmaEpsilon <- sqrt(var(arima700$residuals))
+#Estimation du modèle ARIMA(2,1,1) pour la série ipi
+stargazer(arima211, type = 'text')
+summary(arima211$residuals)
+sigmaEpsilon <- sqrt(var(arima211$residuals))
+
+#Estimation du modèle ARIMA(2,0,1) pour la série diff_ipi
+stargazer(arima201, type = 'text')
+summary(arima201$residuals)
+sigmaEpsilon <- sqrt(var(arima201$residuals))
 
 plot(diff_ipi,col="black",lwd=1)
 lines(fitted(arima700),col="red", type='o',lwd=1)
