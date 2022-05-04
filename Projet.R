@@ -233,14 +233,53 @@ arima211 <- arima(ipi,c(2,1,1))
 
 #Estimation du modèle ARIMA(2,1,1) pour la série ipi
 stargazer(arima211, type = 'text')
-summary(arima211$residuals)
-sigmaEpsilon <- sqrt(var(arima211$residuals))
 
 #Estimation du modèle ARIMA(2,0,1) pour la série diff_ipi
 stargazer(arima201, type = 'text')
-summary(arima201$residuals)
-sigmaEpsilon <- sqrt(var(arima201$residuals))
 
 plot(diff_ipi,col="black",lwd=1)
 lines(fitted(arima700),col="red", type='o',lwd=1)
 auto.arima(diff_ipi,seasonal=FALSE,d=0)
+
+#################################
+####  PARTIE 3 : PREVISION  ####
+#################################
+
+summary(arima201$residuals)
+sigmaEpsilon <- sqrt(var(arima201$residuals))
+
+##############
+# Question 7 #
+##############
+
+plot(density(arima201$residuals), main=NA)
+title(main="Résidus de l'estimation de la série corrigée par le modèle ARIMA(2,0,1)")
+#Distribution proche d'une loi normale centrée réduite, avec toutefois des valeurs plus extrêmes à droite
+
+##############
+# Question 8 #
+##############
+
+real <- as.ts(diff_ipi+mean(diff_ipi)) #la vraie série
+model201 <- diff_ipi - arima201$residuals + mean(diff_ipi) #modélisée par un ARIMA(2,0,1)
+
+#Construction de l'intervalle de confiance
+centerPred <- as.ts(predict(arima201,2)$pred+mean(diff_ipi)) #prédiction sur les 2 dates suivantes
+upperPred <- as.ts(predict(arima201,2)$pred+mean(diff_ipi))
+upperPred[1] <- upperPred[1] + sigmaEpsilon*1.96
+upperPred[2] <- upperPred[2] + sigmaEpsilon*sqrt(1+(arima201[["coef"]][["ar1"]] -arima201[["coef"]][["ma1"]])**2)*1.96
+lowerPred <- as.ts(predict(arima201,2)$pred+mean(diff_ipi))
+lowerPred[1] <- lowerPred[1] - sigmaEpsilon*1.96
+lowerPred[2] <- lowerPred[2] - sigmaEpsilon*sqrt(1+(arima201[["coef"]][["ar1"]] -arima201[["coef"]][["ma1"]])**2)*1.96
+
+#Pour une meilleure visualisation, on n'affiche que les 4 dernières années
+T <- length(real)
+real_end <-real[(T-47):T]
+real_end=ts(real_end, start = c(2016,3), frequency = 12)
+T<-length(model201)
+model201_end <- model201[(T-47):T]
+model201_end=ts(model201_end, start = c(2016,3), frequency = 12)
+
+#Représentation graphique de la prédiction
+ts.plot(real_end, model201_end, centerPred, upperPred, lowerPred, col=c("black","red","red","blue","blue"))
+title(main = "Prédiction de la modélisation ARIMA(2,0,1)")
